@@ -2,6 +2,10 @@
 import { Button } from '@/components/ui/button';
 import { Zap, Wrench, Shield } from 'lucide-react';
 
+// Extra technician/repairman photo for accent
+const heroExtraImage =
+  "https://images.unsplash.com/photo-1520880867055-1e30d1cb001c?auto=format&fit=crop&w=500&q=80";
+
 const Hero = () => {
   return (
     <section id="home" className="bg-gradient-to-br from-blue-50 to-white py-20">
@@ -40,7 +44,7 @@ const Hero = () => {
             </div>
           </div>
           
-          <div className="lg:w-1/2">
+          <div className="lg:w-1/2 relative">
             <div className="relative">
               <img 
                 src="https://images.unsplash.com/photo-1621905251918-48416bd8575a?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
@@ -52,6 +56,15 @@ const Hero = () => {
                 <div className="text-gray-600">Years Experience</div>
               </div>
             </div>
+            <div className="hidden md:block absolute -bottom-10 -right-12" aria-hidden="true">
+              <img
+                src={heroExtraImage}
+                alt="Man performing AC repair"
+                className="rounded-full border-4 border-blue-100 shadow-xl w-36 h-36 object-cover object-center"
+                loading="lazy"
+                style={{ zIndex: 5 }}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -60,3 +73,4 @@ const Hero = () => {
 };
 
 export default Hero;
+
