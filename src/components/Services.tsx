@@ -7,7 +7,6 @@ import {
   Zap, 
   Wrench, 
   Settings, 
-  Tools, 
   HousePlug 
 } from 'lucide-react';
 
@@ -78,7 +77,7 @@ const Services = () => {
                 <ul className="space-y-2">
                   {service.features.map((feature, idx) => (
                     <li key={idx} className="flex items-center space-x-2">
-                      <Tools className="w-4 h-4 text-green-500" />
+                      <Wrench className="w-4 h-4 text-green-500" />
                       <span className="text-gray-700">{feature}</span>
                     </li>
                   ))}
