@@ -33,6 +33,8 @@ const Header = () => {
             <a href="#home" className="text-gray-700 hover:text-blue-600 transition-colors">Home</a>
             <a href="#services" className="text-gray-700 hover:text-blue-600 transition-colors">Services</a>
             <a href="#about" className="text-gray-700 hover:text-blue-600 transition-colors">About</a>
+            <a href="#news" className="text-gray-700 hover:text-blue-600 transition-colors">News</a>
+            <a href="#feedback" className="text-gray-700 hover:text-blue-600 transition-colors">Feedback</a>
             <a href="#contact" className="text-gray-700 hover:text-blue-600 transition-colors">Contact</a>
           </nav>
           <Button className="bg-blue-600 hover:bg-blue-700">
