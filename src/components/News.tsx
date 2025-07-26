@@ -1,176 +1,312 @@
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Newspaper, ExternalLink, Calendar } from 'lucide-react';
+import { Clock, ExternalLink, RefreshCw, Key, Settings } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface NewsArticle {
   title: string;
   description: string;
   url: string;
-  urlToImage: string;
   publishedAt: string;
   source: {
     name: string;
   };
+  urlToImage?: string;
 }
 
 const News = () => {
   const [articles, setArticles] = useState<NewsArticle[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [apiKey, setApiKey] = useState('');
+  const [savedApiKey, setSavedApiKey] = useState('');
+  const [showApiSetup, setShowApiSetup] = useState(false);
   const { toast } = useToast();
 
+  // Technical keywords for filtering relevant news
+  const techKeywords = [
+    'HVAC', 'air conditioning', 'refrigeration', 'solar panels', 'electrical', 
+    'inverter', 'heat pump', 'cooling system', 'energy efficiency', 'smart home',
+    'renewable energy', 'electric vehicle charging', 'home automation', 'solar energy',
+    'electrical systems', 'refrigeration technology', 'climate control'
+  ];
+
   useEffect(() => {
-    fetchNews();
+    // Load saved API key from localStorage
+    const saved = localStorage.getItem('newsApiKey');
+    if (saved) {
+      setSavedApiKey(saved);
+      fetchNews(saved);
+    } else {
+      // Show mock data if no API key
+      loadMockData();
+    }
   }, []);
 
-  const fetchNews = async () => {
-    try {
-      setLoading(true);
-      // Using NewsAPI.org - requires API key for production
-      // For demo purposes, using a mock response structure
-      
-      // In production, you would use:
-      // const response = await fetch(`https://newsapi.org/v2/everything?q=HVAC OR refrigeration OR solar OR electrical&sortBy=publishedAt&apiKey=YOUR_API_KEY`);
-      
-      // For now, we'll create mock data to demonstrate the structure
-      const mockArticles: NewsArticle[] = [
-        {
-          title: "Latest Innovations in Solar Panel Technology for 2024",
-          description: "Discover the newest developments in solar panel efficiency and installation techniques that are revolutionizing the renewable energy sector.",
-          url: "#",
-          urlToImage: "/placeholder.svg",
-          publishedAt: "2024-01-15T10:30:00Z",
-          source: { name: "Energy Tech News" }
-        },
-        {
-          title: "HVAC Industry Trends: Smart Climate Control Systems",
-          description: "How smart thermostats and AI-powered HVAC systems are changing the way we control indoor climate and reduce energy consumption.",
-          url: "#",
-          urlToImage: "/placeholder.svg",
-          publishedAt: "2024-01-14T14:20:00Z",
-          source: { name: "HVAC Weekly" }
-        },
-        {
-          title: "Energy Efficiency Standards Update for Commercial Refrigeration",
-          description: "New regulations and standards for commercial refrigeration systems aimed at reducing environmental impact and improving efficiency.",
-          url: "#",
-          urlToImage: "/placeholder.svg",
-          publishedAt: "2024-01-13T09:15:00Z",
-          source: { name: "Refrigeration Today" }
-        },
-        {
-          title: "Electrical Safety Updates: New Code Requirements",
-          description: "Important updates to electrical safety codes and what they mean for residential and commercial installations.",
-          url: "#",
-          urlToImage: "/placeholder.svg",
-          publishedAt: "2024-01-12T16:45:00Z",
-          source: { name: "Electrical Contractor" }
-        }
-      ];
+  const loadMockData = () => {
+    const mockArticles: NewsArticle[] = [
+      {
+        title: "Latest Innovations in Smart HVAC Systems Drive Energy Efficiency",
+        description: "New smart thermostats and AI-powered HVAC controls are revolutionizing home climate management, reducing energy costs by up to 30%.",
+        url: "#",
+        publishedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+        source: { name: "HVAC Industry Today" }
+      },
+      {
+        title: "Solar Panel Efficiency Reaches Record High in 2024",
+        description: "Breakthrough in perovskite solar cell technology promises to make solar installations more affordable and efficient than ever before.",
+        url: "#",
+        publishedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        source: { name: "Solar Power World" }
+      },
+      {
+        title: "New Refrigeration Standards Set to Reduce Environmental Impact",
+        description: "Updated EPA regulations for commercial refrigeration systems focus on reducing greenhouse gas emissions and improving energy efficiency.",
+        url: "#",
+        publishedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+        source: { name: "Refrigeration & AC Today" }
+      },
+      {
+        title: "Electric Vehicle Charging Infrastructure Expands Rapidly",
+        description: "Residential EV charging installations surge as more homeowners adopt electric vehicles, creating new opportunities for electrical contractors.",
+        url: "#",
+        publishedAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
+        source: { name: "Electrical Contractor" }
+      }
+    ];
+    setArticles(mockArticles);
+  };
 
-      setArticles(mockArticles);
+  const saveApiKey = () => {
+    if (!apiKey.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid API key",
+        variant: "destructive"
+      });
+      return;
+    }
+    localStorage.setItem('newsApiKey', apiKey);
+    setSavedApiKey(apiKey);
+    setApiKey('');
+    setShowApiSetup(false);
+    fetchNews(apiKey);
+    toast({
+      title: "Success",
+      description: "API key saved! Now fetching live news..."
+    });
+  };
+
+  const fetchNews = async (key: string = savedApiKey) => {
+    if (!key) {
+      loadMockData();
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Search for technical news using relevant keywords
+      const queries = ['HVAC technology', 'solar energy systems', 'electrical installation', 'refrigeration innovation'];
+      const randomQuery = queries[Math.floor(Math.random() * queries.length)];
+      
+      const response = await fetch(
+        `https://newsapi.org/v2/everything?q=${encodeURIComponent(randomQuery)}&sortBy=publishedAt&pageSize=12&language=en&apiKey=${key}`
+      );
+      
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.status === 'error') {
+        throw new Error(data.message || 'Failed to fetch news');
+      }
+      
+      // Filter articles for technical relevance
+      const filteredArticles = data.articles.filter((article: NewsArticle) => {
+        const content = `${article.title} ${article.description}`.toLowerCase();
+        return techKeywords.some(keyword => content.includes(keyword.toLowerCase())) &&
+               article.description && article.title;
+      });
+      
+      setArticles(filteredArticles.slice(0, 6));
       
       toast({
         title: "News Updated",
-        description: "Latest industry news has been loaded successfully.",
+        description: `Found ${filteredArticles.length} relevant technical articles`
       });
     } catch (error) {
       console.error('Error fetching news:', error);
       toast({
         title: "Error",
-        description: "Failed to load news articles. Please try again later.",
-        variant: "destructive",
+        description: error instanceof Error ? error.message : "Failed to fetch news. Showing cached content.",
+        variant: "destructive"
       });
+      // Fall back to mock data on error
+      loadMockData();
     } finally {
       setLoading(false);
     }
   };
 
+  // Auto-refresh every 30 minutes
+  useEffect(() => {
+    if (savedApiKey) {
+      const interval = setInterval(() => {
+        fetchNews();
+      }, 30 * 60 * 1000); // 30 minutes
+
+      return () => clearInterval(interval);
+    }
+  }, [savedApiKey]);
+
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     });
   };
-
-  if (loading) {
-    return (
-      <section id="news" className="py-20 bg-gray-50">
-        <div className="container mx-auto px-4">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading latest news...</p>
-          </div>
-        </div>
-      </section>
-    );
-  }
 
   return (
     <section id="news" className="py-20 bg-gray-50">
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
           <h2 className="text-4xl font-bold text-gray-900 mb-4">Industry News</h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Stay updated with the latest developments in technical services, energy efficiency, 
-            and industry innovations.
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            Stay updated with the latest technical news in HVAC, solar, electrical, and refrigeration industries
           </p>
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8 mb-8">
+
+        {/* Controls */}
+        <div className="flex justify-between items-center mb-8 flex-wrap gap-4">
+          <div className="flex items-center gap-4">
+            {savedApiKey ? (
+              <Badge variant="outline" className="text-green-600 border-green-600">
+                ✓ Live News Active • Auto-refreshes every 30 min
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-orange-600 border-orange-600">
+                Demo Mode • Add API key for live news
+              </Badge>
+            )}
+          </div>
+          
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => setShowApiSetup(!showApiSetup)} 
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <Settings className="w-4 h-4" />
+              {savedApiKey ? 'Update API' : 'Setup Live News'}
+            </Button>
+            <Button 
+              onClick={() => fetchNews()} 
+              disabled={loading}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              {loading ? 'Updating...' : 'Refresh'}
+            </Button>
+          </div>
+        </div>
+
+        {/* API Key Setup */}
+        {showApiSetup && (
+          <Card className="mb-8 border-blue-200 bg-blue-50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-blue-800">
+                <Key className="w-5 h-5" />
+                Setup Live News API
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-blue-700 mb-4">
+                Get live industry news by adding your NewsAPI key. Get a free key at{' '}
+                <a href="https://newsapi.org" target="_blank" rel="noopener noreferrer" className="underline font-semibold">
+                  newsapi.org
+                </a>{' '}
+                (Free plan includes 100 requests/day)
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  type="password"
+                  placeholder="Enter your NewsAPI key"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  className="flex-1"
+                />
+                <Button onClick={saveApiKey} className="bg-blue-600 hover:bg-blue-700">
+                  Save & Activate
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Loading State */}
+        {loading && (
+          <div className="text-center py-12">
+            <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
+            <p className="text-gray-600">Fetching latest industry news...</p>
+          </div>
+        )}
+
+        {/* News Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {articles.map((article, index) => (
-            <Card key={index} className="group hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-              <CardHeader>
-                <div className="flex items-center space-x-2 text-sm text-gray-500 mb-2">
-                  <Calendar className="w-4 h-4" />
-                  <span>{formatDate(article.publishedAt)}</span>
-                  <span>•</span>
-                  <span>{article.source.name}</span>
+            <Card key={index} className="hover:shadow-lg transition-shadow">
+              {article.urlToImage && (
+                <div className="h-48 overflow-hidden rounded-t-lg">
+                  <img 
+                    src={article.urlToImage} 
+                    alt={article.title}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
                 </div>
-                <CardTitle className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
-                  {article.title}
-                </CardTitle>
-                <CardDescription className="text-gray-600">
-                  {article.description}
-                </CardDescription>
+              )}
+              <CardHeader>
+                <div className="flex items-center justify-between mb-2">
+                  <Badge variant="secondary">{article.source.name}</Badge>
+                  <div className="flex items-center text-sm text-gray-500">
+                    <Clock className="w-4 h-4 mr-1" />
+                    {formatDate(article.publishedAt)}
+                  </div>
+                </div>
+                <CardTitle className="text-lg line-clamp-2">{article.title}</CardTitle>
               </CardHeader>
               <CardContent>
-                <Button 
-                  variant="outline" 
-                  className="w-full group-hover:bg-blue-50 group-hover:border-blue-300"
-                  onClick={() => window.open(article.url, '_blank')}
+                <p className="text-gray-600 line-clamp-3 mb-4">{article.description}</p>
+                <a 
+                  href={article.url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium"
                 >
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  Read Full Article
-                </Button>
+                  Read More <ExternalLink className="w-4 h-4 ml-1" />
+                </a>
               </CardContent>
             </Card>
           ))}
         </div>
-        
-        <div className="text-center">
-          <Button 
-            onClick={fetchNews}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            <Newspaper className="w-4 h-4 mr-2" />
-            Refresh News
-          </Button>
-        </div>
-        
-        <div className="mt-8 p-4 bg-blue-50 rounded-lg">
-          <p className="text-sm text-gray-600 text-center">
-            <strong>Note:</strong> To display live news, you'll need to obtain a free API key from{' '}
-            <a href="https://newsapi.org" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-              NewsAPI.org
-            </a>{' '}
-            and replace the mock data with actual API calls.
-          </p>
-        </div>
+
+        {!loading && articles.length === 0 && (
+          <div className="text-center py-12">
+            <p className="text-gray-600">No news articles found. Try refreshing or setting up the API key for live news.</p>
+          </div>
+        )}
       </div>
     </section>
   );
