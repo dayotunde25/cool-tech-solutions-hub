@@ -11,11 +11,11 @@ const Header = () => {
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-1 text-gray-600">
               <Phone className="w-4 h-4" />
-              <span>+1 (555) 123-4567</span>
+              <span>+234(90)33150460</span>
             </div>
             <div className="flex items-center space-x-1 text-gray-600">
               <Mail className="w-4 h-4" />
-              <span>info@techservices.com</span>
+              <span>dayotunde25@gmail.com</span>
             </div>
           </div>
           <div className="flex items-center space-x-1 text-gray-600">
@@ -27,7 +27,7 @@ const Header = () => {
         {/* Main navigation */}
         <div className="flex justify-between items-center py-4">
           <div className="text-2xl font-bold text-blue-600">
-            TechServices Pro
+            Moscool Techical Services
           </div>
           <nav className="hidden md:flex space-x-8">
             <a href="#home" className="text-gray-700 hover:text-blue-600 transition-colors">Home</a>
