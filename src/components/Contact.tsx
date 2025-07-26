@@ -47,7 +47,7 @@ const Contact = () => {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">Emergency Line</h3>
-                    <p className="text-gray-600">+1 (555) 123-4567</p>
+                    <p className="text-gray-600">+2349033150460</p>
                     <p className="text-sm text-gray-500">Available 24/7 for emergencies</p>
                   </div>
                 </div>
@@ -62,7 +62,7 @@ const Contact = () => {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">Email Us</h3>
-                    <p className="text-gray-600">info@techservices.com</p>
+                    <p className="text-gray-600">dayotunde25@gmail.com</p>
                     <p className="text-sm text-gray-500">We'll respond within 2 hours</p>
                   </div>
                 </div>
