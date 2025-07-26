@@ -40,10 +40,10 @@ const About = () => {
           
           <div className="lg:w-1/2 lg:pl-12">
             <h2 className="text-4xl font-bold text-gray-900 mb-6">
-              Why Choose TechServices Pro?
+              Why Choose Moscool Technical Services?
             </h2>
             <p className="text-lg text-gray-600 mb-6 leading-relaxed">
-              With over 15 years of experience in the technical services industry, we've built our 
+              With over 10 years of experience in the technical services industry, we've built our 
               reputation on reliability, expertise, and exceptional customer service. Our certified 
               technicians are equipped with the latest tools and knowledge to handle any technical challenge.
             </p>
