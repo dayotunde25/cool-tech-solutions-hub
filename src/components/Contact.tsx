@@ -1,11 +1,61 @@
 
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Phone, Mail, MapPin, Clock } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const Contact = () => {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [serviceNeeded, setServiceNeeded] = useState('');
+  const [message, setMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      const { error } = await supabase
+        .from('contact_submissions')
+        .insert({
+          name,
+          email,
+          phone,
+          service_needed: serviceNeeded,
+          message,
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Message Sent Successfully",
+        description: "Thank you for contacting us. We'll get back to you within 2 hours.",
+      });
+
+      // Clear form
+      setName('');
+      setEmail('');
+      setPhone('');
+      setServiceNeeded('');
+      setMessage('');
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "There was an issue sending your message. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <section id="contact" className="py-20 bg-blue-50">
       <div className="container mx-auto px-4">
@@ -23,17 +73,49 @@ const Contact = () => {
             <CardHeader>
               <CardTitle className="text-2xl font-bold text-gray-900">Send us a Message</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input placeholder="Your Name" />
-                <Input placeholder="Your Email" type="email" />
-              </div>
-              <Input placeholder="Phone Number" type="tel" />
-              <Input placeholder="Service Needed" />
-              <Textarea placeholder="Describe your technical issue or service requirements..." rows={4} />
-              <Button className="w-full bg-blue-600 hover:bg-blue-700">
-                Send Message
-              </Button>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Input 
+                    placeholder="Your Name" 
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                  />
+                  <Input 
+                    placeholder="Your Email" 
+                    type="email" 
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <Input 
+                  placeholder="Phone Number" 
+                  type="tel" 
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
+                <Input 
+                  placeholder="Service Needed" 
+                  value={serviceNeeded}
+                  onChange={(e) => setServiceNeeded(e.target.value)}
+                />
+                <Textarea 
+                  placeholder="Describe your technical issue or service requirements..." 
+                  rows={4} 
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  required
+                />
+                <Button 
+                  type="submit" 
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Sending...' : 'Send Message'}
+                </Button>
+              </form>
             </CardContent>
           </Card>
           

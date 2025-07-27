@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Mail } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const Feedback = () => {
   const [name, setName] = useState('');
@@ -20,16 +21,20 @@ const Feedback = () => {
     setIsSubmitting(true);
 
     try {
-      // Create mailto link for email feedback
-      const mailtoLink = `mailto:feedback@techservices.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(
-        `Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`
-      )}`;
-      
-      window.location.href = mailtoLink;
+      const { error } = await supabase
+        .from('feedback_submissions')
+        .insert({
+          name,
+          email,
+          subject,
+          message,
+        });
+
+      if (error) throw error;
 
       toast({
-        title: "Email Client Opened",
-        description: "Your default email client should open with the feedback form filled out.",
+        title: "Feedback Sent Successfully",
+        description: "Thank you for your feedback! We appreciate your input.",
       });
 
       // Clear form
@@ -40,7 +45,7 @@ const Feedback = () => {
     } catch (error) {
       toast({
         title: "Error",
-        description: "There was an issue opening your email client. Please try again.",
+        description: "There was an issue sending your feedback. Please try again.",
         variant: "destructive",
       });
     } finally {
