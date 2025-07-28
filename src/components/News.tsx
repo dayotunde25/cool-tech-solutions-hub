@@ -1,11 +1,10 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Clock, ExternalLink, RefreshCw, Key, Settings } from 'lucide-react';
+import { Clock, ExternalLink, RefreshCw, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface NewsArticle {
   title: string;
@@ -19,30 +18,11 @@ interface NewsArticle {
 const News = () => {
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(false);
-  const [apiKey, setApiKey] = useState('');
-  const [savedApiKey, setSavedApiKey] = useState('');
-  const [showApiSetup, setShowApiSetup] = useState(false);
+  const [isConfigured, setIsConfigured] = useState(false);
   const { toast } = useToast();
 
-  // Technical keywords for filtering relevant news
-  const techKeywords = [
-    'HVAC', 'air conditioning', 'refrigeration', 'solar panels', 'electrical', 
-    'inverter', 'heat pump', 'cooling system', 'energy efficiency', 'smart home',
-    'renewable energy', 'electric vehicle charging', 'home automation', 'solar energy',
-    'electrical systems', 'refrigeration technology', 'climate control'
-  ];
-
   useEffect(() => {
-    // Clear old API key if it exists and load new one
-    localStorage.removeItem('newsApiKey'); // Remove old NewsAPI key
-    const saved = localStorage.getItem('newsdataApiKey');
-    if (saved) {
-      setSavedApiKey(saved);
-      fetchNews(saved);
-    } else {
-      // Show mock data if no API key
-      loadMockData();
-    }
+    fetchNews();
   }, []);
 
   const loadMockData = () => {
@@ -79,70 +59,38 @@ const News = () => {
     setArticles(mockArticles);
   };
 
-  const saveApiKey = () => {
-    if (!apiKey.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter a valid API key",
-        variant: "destructive"
-      });
-      return;
-    }
-    localStorage.setItem('newsdataApiKey', apiKey);
-    setSavedApiKey(apiKey);
-    setApiKey('');
-    setShowApiSetup(false);
-    fetchNews(apiKey);
-    toast({
-      title: "Success",
-      description: "API key saved! Now fetching live news..."
-    });
-  };
-
-  const fetchNews = async (key: string = savedApiKey) => {
-    if (!key) {
-      loadMockData();
-      return;
-    }
-
+  const fetchNews = async () => {
     setLoading(true);
     try {
-      // Search for technical news using relevant keywords
-      const queries = ['HVAC technology', 'solar energy systems', 'electrical installation', 'refrigeration innovation'];
-      const randomQuery = queries[Math.floor(Math.random() * queries.length)];
+      const { data, error } = await supabase.functions.invoke('fetch-news');
       
-      const response = await fetch(
-        `https://newsdata.io/api/1/news?apikey=${key}&q=${encodeURIComponent(randomQuery)}&language=en&size=12&category=technology`
-      );
-      
-      if (!response.ok) {
-        throw new Error(`API Error: ${response.status}`);
+      if (error) {
+        throw error;
       }
       
-      const data = await response.json();
-      
-      if (data.status === 'error') {
-        throw new Error(data.message || 'Failed to fetch news');
+      if (data.error) {
+        // API key not configured, use mock data
+        if (data.error.includes('not configured')) {
+          setIsConfigured(false);
+          loadMockData();
+          return;
+        }
+        throw new Error(data.error);
       }
       
-      // Filter articles for technical relevance
-      const filteredArticles = data.results.filter((article: NewsArticle) => {
-        const content = `${article.title} ${article.description}`.toLowerCase();
-        return techKeywords.some(keyword => content.includes(keyword.toLowerCase())) &&
-               article.description && article.title;
-      });
-      
-      setArticles(filteredArticles.slice(0, 6));
+      setIsConfigured(true);
+      setArticles(data.articles || []);
       
       toast({
         title: "News Updated",
-        description: `Found ${filteredArticles.length} relevant technical articles`
+        description: `Found ${data.total || data.articles?.length || 0} relevant technical articles`
       });
     } catch (error) {
       console.error('Error fetching news:', error);
+      setIsConfigured(false);
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to fetch news. Showing cached content.",
+        title: "News Unavailable",
+        description: "Using demo articles. Contact admin to configure live news.",
         variant: "destructive"
       });
       // Fall back to mock data on error
@@ -152,16 +100,16 @@ const News = () => {
     }
   };
 
-  // Auto-refresh every 30 minutes
+  // Auto-refresh every 30 minutes if configured
   useEffect(() => {
-    if (savedApiKey) {
+    if (isConfigured) {
       const interval = setInterval(() => {
         fetchNews();
       }, 30 * 60 * 1000); // 30 minutes
 
       return () => clearInterval(interval);
     }
-  }, [savedApiKey]);
+  }, [isConfigured]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -185,27 +133,19 @@ const News = () => {
         {/* Controls */}
         <div className="flex justify-between items-center mb-8 flex-wrap gap-4">
           <div className="flex items-center gap-4">
-            {savedApiKey ? (
+            {isConfigured ? (
               <Badge variant="outline" className="text-green-600 border-green-600">
                 ✓ Live News Active • Auto-refreshes every 30 min
               </Badge>
             ) : (
-              <Badge variant="outline" className="text-orange-600 border-orange-600">
-                Demo Mode • Add API key for live news
+              <Badge variant="outline" className="text-orange-600 border-orange-600 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4" />
+                Demo Mode • Contact admin for live news
               </Badge>
             )}
           </div>
           
           <div className="flex gap-2">
-            <Button 
-              onClick={() => setShowApiSetup(!showApiSetup)} 
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2"
-            >
-              <Settings className="w-4 h-4" />
-              {savedApiKey ? 'Update API' : 'Setup Live News'}
-            </Button>
             <Button 
               onClick={() => fetchNews()} 
               disabled={loading}
@@ -218,39 +158,6 @@ const News = () => {
             </Button>
           </div>
         </div>
-
-        {/* API Key Setup */}
-        {showApiSetup && (
-          <Card className="mb-8 border-blue-200 bg-blue-50">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-blue-800">
-                <Key className="w-5 h-5" />
-                Setup Live News API
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-blue-700 mb-4">
-                Get live industry news by adding your NewsData.io API key. Get a free key at{' '}
-                <a href="https://newsdata.io" target="_blank" rel="noopener noreferrer" className="underline font-semibold">
-                  newsdata.io
-                </a>{' '}
-                (Free plan includes 200 requests/day)
-              </p>
-              <div className="flex gap-2">
-                <Input
-                  type="password"
-                  placeholder="Enter your NewsData.io API key"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  className="flex-1"
-                />
-                <Button onClick={saveApiKey} className="bg-blue-600 hover:bg-blue-700">
-                  Save & Activate
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Loading State */}
         {loading && (
@@ -303,7 +210,7 @@ const News = () => {
 
         {!loading && articles.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-600">No news articles found. Try refreshing or setting up the API key for live news.</p>
+            <p className="text-gray-600">No news articles found. Try refreshing or contact the administrator.</p>
           </div>
         )}
       </div>

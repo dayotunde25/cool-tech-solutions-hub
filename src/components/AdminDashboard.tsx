@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { LogOut, Mail, MessageSquare, Users } from 'lucide-react';
+import { LogOut, Mail, MessageSquare, Users, Settings, Key, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -31,11 +31,13 @@ const AdminDashboard = () => {
   const [contactSubmissions, setContactSubmissions] = useState<ContactSubmission[]>([]);
   const [feedbackSubmissions, setFeedbackSubmissions] = useState<FeedbackSubmission[]>([]);
   const [loading, setLoading] = useState(true);
+  const [newsApiStatus, setNewsApiStatus] = useState<'checking' | 'configured' | 'not-configured'>('checking');
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchSubmissions();
+    checkNewsApiStatus();
   }, []);
 
   const fetchSubmissions = async () => {
@@ -64,6 +66,25 @@ const AdminDashboard = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const checkNewsApiStatus = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('fetch-news');
+      
+      if (error) {
+        setNewsApiStatus('not-configured');
+        return;
+      }
+      
+      if (data.error && data.error.includes('not configured')) {
+        setNewsApiStatus('not-configured');
+      } else {
+        setNewsApiStatus('configured');
+      }
+    } catch (error) {
+      setNewsApiStatus('not-configured');
     }
   };
 
@@ -166,6 +187,7 @@ const AdminDashboard = () => {
           <TabsList>
             <TabsTrigger value="contact">Contact Submissions</TabsTrigger>
             <TabsTrigger value="feedback">Feedback Submissions</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
           <TabsContent value="contact">
@@ -237,6 +259,76 @@ const AdminDashboard = () => {
                     ))}
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="w-5 h-5" />
+                  System Settings
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {/* News API Configuration */}
+                  <div className="border rounded-lg p-6">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                      <Key className="w-5 h-5" />
+                      News API Configuration
+                    </h3>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600 mb-2">
+                          NewsData.io API integration for live industry news
+                        </p>
+                        <div className="flex items-center gap-2">
+                          {newsApiStatus === 'checking' && (
+                            <Badge variant="outline">
+                              Checking...
+                            </Badge>
+                          )}
+                          {newsApiStatus === 'configured' && (
+                            <Badge variant="outline" className="text-green-600 border-green-600">
+                              <CheckCircle className="w-4 h-4 mr-1" />
+                              Configured
+                            </Badge>
+                          )}
+                          {newsApiStatus === 'not-configured' && (
+                            <Badge variant="outline" className="text-orange-600 border-orange-600">
+                              Not Configured
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button 
+                          onClick={checkNewsApiStatus}
+                          variant="outline" 
+                          size="sm"
+                        >
+                          Check Status
+                        </Button>
+                      </div>
+                    </div>
+                    {newsApiStatus === 'not-configured' && (
+                      <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                        <p className="text-sm text-orange-800 mb-2">
+                          The NewsData.io API key is not configured. To enable live news:
+                        </p>
+                        <ol className="text-sm text-orange-700 space-y-1 ml-4 list-decimal">
+                          <li>Get a free API key from <a href="https://newsdata.io" target="_blank" rel="noopener noreferrer" className="underline">newsdata.io</a></li>
+                          <li>Go to the <a href="https://supabase.com/dashboard/project/mkgwqkpwmblhinbzaqub/settings/functions" target="_blank" rel="noopener noreferrer" className="underline">Supabase Edge Functions settings</a></li>
+                          <li>Add a new secret named <code className="bg-orange-100 px-1 rounded">NEWSDATA_API_KEY</code></li>
+                          <li>Paste your API key as the value</li>
+                          <li>Click "Check Status" to verify the configuration</li>
+                        </ol>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
