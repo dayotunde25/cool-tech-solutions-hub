@@ -10,12 +10,10 @@ import { useToast } from '@/hooks/use-toast';
 interface NewsArticle {
   title: string;
   description: string;
-  url: string;
-  publishedAt: string;
-  source: {
-    name: string;
-  };
-  urlToImage?: string;
+  link: string;
+  pubDate: string;
+  source_id: string;
+  image_url?: string;
 }
 
 const News = () => {
@@ -51,30 +49,30 @@ const News = () => {
       {
         title: "Latest Innovations in Smart HVAC Systems Drive Energy Efficiency",
         description: "New smart thermostats and AI-powered HVAC controls are revolutionizing home climate management, reducing energy costs by up to 30%.",
-        url: "#",
-        publishedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-        source: { name: "HVAC Industry Today" }
+        link: "#",
+        pubDate: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+        source_id: "HVAC Industry Today"
       },
       {
         title: "Solar Panel Efficiency Reaches Record High in 2024",
         description: "Breakthrough in perovskite solar cell technology promises to make solar installations more affordable and efficient than ever before.",
-        url: "#",
-        publishedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-        source: { name: "Solar Power World" }
+        link: "#",
+        pubDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        source_id: "Solar Power World"
       },
       {
         title: "New Refrigeration Standards Set to Reduce Environmental Impact",
         description: "Updated EPA regulations for commercial refrigeration systems focus on reducing greenhouse gas emissions and improving energy efficiency.",
-        url: "#",
-        publishedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-        source: { name: "Refrigeration & AC Today" }
+        link: "#",
+        pubDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+        source_id: "Refrigeration & AC Today"
       },
       {
         title: "Electric Vehicle Charging Infrastructure Expands Rapidly",
         description: "Residential EV charging installations surge as more homeowners adopt electric vehicles, creating new opportunities for electrical contractors.",
-        url: "#",
-        publishedAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
-        source: { name: "Electrical Contractor" }
+        link: "#",
+        pubDate: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
+        source_id: "Electrical Contractor"
       }
     ];
     setArticles(mockArticles);
@@ -113,7 +111,7 @@ const News = () => {
       const randomQuery = queries[Math.floor(Math.random() * queries.length)];
       
       const response = await fetch(
-        `https://newsapi.org/v2/everything?q=${encodeURIComponent(randomQuery)}&sortBy=publishedAt&pageSize=12&language=en&apiKey=${key}`
+        `https://newsdata.io/api/1/news?apikey=${key}&q=${encodeURIComponent(randomQuery)}&language=en&size=12&category=technology`
       );
       
       if (!response.ok) {
@@ -127,7 +125,7 @@ const News = () => {
       }
       
       // Filter articles for technical relevance
-      const filteredArticles = data.articles.filter((article: NewsArticle) => {
+      const filteredArticles = data.results.filter((article: NewsArticle) => {
         const content = `${article.title} ${article.description}`.toLowerCase();
         return techKeywords.some(keyword => content.includes(keyword.toLowerCase())) &&
                article.description && article.title;
@@ -231,16 +229,16 @@ const News = () => {
             </CardHeader>
             <CardContent>
               <p className="text-blue-700 mb-4">
-                Get live industry news by adding your NewsAPI key. Get a free key at{' '}
-                <a href="https://newsapi.org" target="_blank" rel="noopener noreferrer" className="underline font-semibold">
-                  newsapi.org
+                Get live industry news by adding your NewsData.io API key. Get a free key at{' '}
+                <a href="https://newsdata.io" target="_blank" rel="noopener noreferrer" className="underline font-semibold">
+                  newsdata.io
                 </a>{' '}
-                (Free plan includes 100 requests/day)
+                (Free plan includes 200 requests/day)
               </p>
               <div className="flex gap-2">
                 <Input
                   type="password"
-                  placeholder="Enter your NewsAPI key"
+                  placeholder="Enter your NewsData.io API key"
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
                   className="flex-1"
@@ -265,10 +263,10 @@ const News = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {articles.map((article, index) => (
             <Card key={index} className="hover:shadow-lg transition-shadow">
-              {article.urlToImage && (
+              {article.image_url && (
                 <div className="h-48 overflow-hidden rounded-t-lg">
                   <img 
-                    src={article.urlToImage} 
+                    src={article.image_url} 
                     alt={article.title}
                     className="w-full h-full object-cover"
                     onError={(e) => {
@@ -279,10 +277,10 @@ const News = () => {
               )}
               <CardHeader>
                 <div className="flex items-center justify-between mb-2">
-                  <Badge variant="secondary">{article.source.name}</Badge>
+                  <Badge variant="secondary">{article.source_id}</Badge>
                   <div className="flex items-center text-sm text-gray-500">
                     <Clock className="w-4 h-4 mr-1" />
-                    {formatDate(article.publishedAt)}
+                    {formatDate(article.pubDate)}
                   </div>
                 </div>
                 <CardTitle className="text-lg line-clamp-2">{article.title}</CardTitle>
@@ -290,7 +288,7 @@ const News = () => {
               <CardContent>
                 <p className="text-gray-600 line-clamp-3 mb-4">{article.description}</p>
                 <a 
-                  href={article.url} 
+                  href={article.link} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium"
