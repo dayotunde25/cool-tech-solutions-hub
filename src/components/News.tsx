@@ -33,8 +33,9 @@ const News = () => {
   ];
 
   useEffect(() => {
-    // Load saved API key from localStorage
-    const saved = localStorage.getItem('newsApiKey');
+    // Clear old API key if it exists and load new one
+    localStorage.removeItem('newsApiKey'); // Remove old NewsAPI key
+    const saved = localStorage.getItem('newsdataApiKey');
     if (saved) {
       setSavedApiKey(saved);
       fetchNews(saved);
@@ -87,7 +88,7 @@ const News = () => {
       });
       return;
     }
-    localStorage.setItem('newsApiKey', apiKey);
+    localStorage.setItem('newsdataApiKey', apiKey);
     setSavedApiKey(apiKey);
     setApiKey('');
     setShowApiSetup(false);
