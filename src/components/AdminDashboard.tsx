@@ -3,7 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { LogOut, Mail, MessageSquare, Users, Settings, Key, CheckCircle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { LogOut, Mail, MessageSquare, Users, Settings, Key, CheckCircle, Plus, Edit, Trash2, FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -27,16 +31,31 @@ interface FeedbackSubmission {
   created_at: string;
 }
 
+interface Post {
+  id: string;
+  title: string;
+  content: string;
+  image_url: string | null;
+  category: string;
+  published: boolean;
+  created_at: string;
+  author_id: string;
+}
+
 const AdminDashboard = () => {
   const [contactSubmissions, setContactSubmissions] = useState<ContactSubmission[]>([]);
   const [feedbackSubmissions, setFeedbackSubmissions] = useState<FeedbackSubmission[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [newsApiStatus, setNewsApiStatus] = useState<'checking' | 'configured' | 'not-configured'>('checking');
+  const [showPostForm, setShowPostForm] = useState(false);
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchSubmissions();
+    fetchPosts();
     checkNewsApiStatus();
   }, []);
 
@@ -66,6 +85,89 @@ const AdminDashboard = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPosts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('posts')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setPosts(data || []);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to load posts. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handlePostSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    
+    const postData = {
+      title: formData.get('title') as string,
+      content: formData.get('content') as string,
+      image_url: formData.get('image_url') as string || null,
+      category: formData.get('category') as string,
+      published: formData.get('published') === 'on',
+    };
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      if (editingPost) {
+        const { error } = await supabase
+          .from('posts')
+          .update(postData)
+          .eq('id', editingPost.id);
+        if (error) throw error;
+        toast({ title: "Success", description: "Post updated successfully." });
+      } else {
+        const { error } = await supabase
+          .from('posts')
+          .insert({ ...postData, author_id: user.id });
+        if (error) throw error;
+        toast({ title: "Success", description: "Post created successfully." });
+      }
+
+      fetchPosts();
+      setShowPostForm(false);
+      setEditingPost(null);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save post.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeletePost = async (postId: string) => {
+    if (!confirm('Are you sure you want to delete this post?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('posts')
+        .delete()
+        .eq('id', postId);
+
+      if (error) throw error;
+      
+      fetchPosts();
+      toast({ title: "Success", description: "Post deleted successfully." });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to delete post.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -185,10 +287,150 @@ const AdminDashboard = () => {
 
         <Tabs defaultValue="contact" className="space-y-6">
           <TabsList>
+            <TabsTrigger value="posts">Portfolio Posts</TabsTrigger>
             <TabsTrigger value="contact">Contact Submissions</TabsTrigger>
             <TabsTrigger value="feedback">Feedback Submissions</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="posts">
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <CardTitle>Portfolio Posts</CardTitle>
+                  <Button onClick={() => setShowPostForm(true)} className="flex items-center gap-2">
+                    <Plus className="w-4 h-4" />
+                    New Post
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {showPostForm && (
+                  <Card className="mb-6">
+                    <CardHeader>
+                      <CardTitle>{editingPost ? 'Edit Post' : 'Create New Post'}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <form onSubmit={handlePostSubmit} className="space-y-4">
+                        <div>
+                          <Label htmlFor="title">Title</Label>
+                          <Input 
+                            id="title" 
+                            name="title" 
+                            defaultValue={editingPost?.title || ''} 
+                            required 
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="category">Category</Label>
+                          <Input 
+                            id="category" 
+                            name="category" 
+                            defaultValue={editingPost?.category || 'general'} 
+                            placeholder="e.g., Web Development, Mobile App, etc." 
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="image_url">Image URL (optional)</Label>
+                          <Input 
+                            id="image_url" 
+                            name="image_url" 
+                            type="url" 
+                            defaultValue={editingPost?.image_url || ''} 
+                            placeholder="https://example.com/image.jpg" 
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="content">Content</Label>
+                          <Textarea 
+                            id="content" 
+                            name="content" 
+                            rows={6} 
+                            defaultValue={editingPost?.content || ''} 
+                            required 
+                          />
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox 
+                            id="published" 
+                            name="published" 
+                            defaultChecked={editingPost?.published || false} 
+                          />
+                          <Label htmlFor="published">Publish immediately</Label>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button type="submit">
+                            {editingPost ? 'Update Post' : 'Create Post'}
+                          </Button>
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            onClick={() => {
+                              setShowPostForm(false);
+                              setEditingPost(null);
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </form>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {posts.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">No posts yet. Create your first post to showcase your work!</p>
+                ) : (
+                  <div className="space-y-4">
+                    {posts.map((post) => (
+                      <Card key={post.id} className="border-l-4 border-l-purple-500">
+                        <CardContent className="p-6">
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-semibold text-lg">{post.title}</h3>
+                              <Badge variant={post.published ? "default" : "secondary"}>
+                                {post.published ? "Published" : "Draft"}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline">
+                                {formatDate(post.created_at)}
+                              </Badge>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setEditingPost(post);
+                                  setShowPostForm(true);
+                                }}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleDeletePost(post.id)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="space-y-2 text-sm text-gray-600 mb-4">
+                            <p><strong>Category:</strong> {post.category}</p>
+                            {post.image_url && <p><strong>Image:</strong> {post.image_url}</p>}
+                          </div>
+                          <div>
+                            <p className="font-medium">Content:</p>
+                            <p className="text-gray-700 mt-1 line-clamp-3">{post.content}</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="contact">
             <Card>
