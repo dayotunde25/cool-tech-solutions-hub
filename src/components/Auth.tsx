@@ -30,7 +30,7 @@ const Auth = () => {
         setLoading(false);
         
         if (session?.user) {
-          navigate('/');
+          navigate('/admin');
         }
       }
     );
@@ -42,7 +42,7 @@ const Auth = () => {
       setLoading(false);
       
       if (session?.user) {
-        navigate('/');
+        navigate('/admin');
       }
     });
 
@@ -136,7 +136,7 @@ const Auth = () => {
           <CardContent>
             <p className="text-gray-600 mb-4">You are already signed in.</p>
             <Button 
-              onClick={() => navigate('/')} 
+              onClick={() => navigate('/admin')} 
               className="w-full"
             >
               Go to Dashboard
