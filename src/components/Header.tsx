@@ -1,6 +1,7 @@
 
 import { Phone, Mail, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
 
 const Header = () => {
   return (
@@ -37,7 +38,7 @@ const Header = () => {
             <a href="#news" className="text-gray-700 hover:text-blue-600 transition-colors">News</a>
             <a href="#feedback" className="text-gray-700 hover:text-blue-600 transition-colors">Feedback</a>
             <a href="#contact" className="text-gray-700 hover:text-blue-600 transition-colors">Contact</a>
-            <a href="/auth" className="text-gray-700 hover:text-blue-600 transition-colors">Admin</a>
+            <Link to="/auth" className="text-gray-700 hover:text-blue-600 transition-colors">Admin</Link>
           </nav>
           <Button 
             onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}
