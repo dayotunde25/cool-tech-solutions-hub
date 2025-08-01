@@ -20,10 +20,19 @@ const Hero = () => {
               solar systems, electrical work, and more. Available 24/7 for your technical needs.
             </p>
             <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
-              <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-lg px-8 py-3">
+              <Button 
+                size="lg" 
+                className="bg-blue-600 hover:bg-blue-700 text-lg px-8 py-3"
+                onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}
+              >
                 Schedule Service
               </Button>
-              <Button size="lg" variant="outline" className="text-lg px-8 py-3">
+              <Button 
+                size="lg" 
+                variant="outline" 
+                className="text-lg px-8 py-3"
+                onClick={() => window.location.href = 'tel:+2349033150460'}
+              >
                 Emergency Call
               </Button>
             </div>
