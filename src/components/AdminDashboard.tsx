@@ -172,20 +172,36 @@ const AdminDashboard = () => {
   };
 
   const checkNewsApiStatus = async () => {
+    setNewsApiStatus('checking');
     try {
       const { data, error } = await supabase.functions.invoke('fetch-news');
       
+      console.log('News API response:', { data, error });
+      
+      // If there's a network or auth error, treat as not configured
       if (error) {
+        console.error('Edge function error:', error);
         setNewsApiStatus('not-configured');
         return;
       }
       
-      if (data.error && data.error.includes('not configured')) {
-        setNewsApiStatus('not-configured');
-      } else {
+      // Check if the response contains an error about API key configuration
+      if (data && data.error) {
+        if (data.error.includes('not configured') || data.error.includes('API key')) {
+          setNewsApiStatus('not-configured');
+        } else {
+          // Other error, but API key might be configured
+          setNewsApiStatus('configured');
+        }
+      } else if (data && (data.articles || data.total !== undefined)) {
+        // Successfully got articles or a valid response structure
         setNewsApiStatus('configured');
+      } else {
+        // Unexpected response format
+        setNewsApiStatus('not-configured');
       }
     } catch (error) {
+      console.error('Failed to check news API status:', error);
       setNewsApiStatus('not-configured');
     }
   };
