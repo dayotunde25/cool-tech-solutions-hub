@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/Auth";
 import AdminDashboardPage from "./pages/AdminDashboard";
+import PostDetail from "./pages/PostDetail";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -20,6 +21,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<AuthPage />} />
+          <Route path="/post/:id" element={<PostDetail />} />
           <Route path="/admin" element={
             <ProtectedRoute>
               <AdminDashboardPage />

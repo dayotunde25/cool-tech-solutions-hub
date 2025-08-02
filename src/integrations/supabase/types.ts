@@ -77,33 +77,45 @@ export type Database = {
           category: string | null
           content: string
           created_at: string
+          currency: string | null
           id: string
           image_url: string | null
+          post_type: string | null
+          price: number | null
           published: boolean | null
           title: string
           updated_at: string
+          video_url: string | null
         }
         Insert: {
           author_id?: string | null
           category?: string | null
           content: string
           created_at?: string
+          currency?: string | null
           id?: string
           image_url?: string | null
+          post_type?: string | null
+          price?: number | null
           published?: boolean | null
           title: string
           updated_at?: string
+          video_url?: string | null
         }
         Update: {
           author_id?: string | null
           category?: string | null
           content?: string
           created_at?: string
+          currency?: string | null
           id?: string
           image_url?: string | null
+          post_type?: string | null
+          price?: number | null
           published?: boolean | null
           title?: string
           updated_at?: string
+          video_url?: string | null
         }
         Relationships: []
       }

@@ -36,10 +36,14 @@ interface Post {
   title: string;
   content: string;
   image_url: string | null;
+  video_url: string | null;
   category: string;
+  post_type: string;
+  price: number | null;
+  currency: string;
   published: boolean;
   created_at: string;
-  author_id: string;
+  updated_at: string;
 }
 
 const AdminDashboard = () => {
@@ -114,7 +118,11 @@ const AdminDashboard = () => {
       title: formData.get('title') as string,
       content: formData.get('content') as string,
       image_url: formData.get('image_url') as string || null,
+      video_url: formData.get('video_url') as string || null,
       category: formData.get('category') as string,
+      post_type: formData.get('post_type') as string || 'portfolio',
+      price: formData.get('price') ? parseFloat(formData.get('price') as string) : null,
+      currency: formData.get('currency') as string || 'USD',
       published: formData.get('published') === 'on',
     };
 
@@ -347,6 +355,18 @@ const AdminDashboard = () => {
                           />
                         </div>
                         <div>
+                          <Label htmlFor="post_type">Type</Label>
+                          <select 
+                            id="post_type" 
+                            name="post_type" 
+                            defaultValue={editingPost?.post_type || 'portfolio'}
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            <option value="portfolio">Portfolio Item</option>
+                            <option value="sale">For Sale</option>
+                          </select>
+                        </div>
+                        <div>
                           <Label htmlFor="image_url">Image URL (optional)</Label>
                           <Input 
                             id="image_url" 
@@ -355,6 +375,43 @@ const AdminDashboard = () => {
                             defaultValue={editingPost?.image_url || ''} 
                             placeholder="https://example.com/image.jpg" 
                           />
+                        </div>
+                        <div>
+                          <Label htmlFor="video_url">Video URL (optional)</Label>
+                          <Input 
+                            id="video_url" 
+                            name="video_url" 
+                            type="url" 
+                            defaultValue={editingPost?.video_url || ''} 
+                            placeholder="https://example.com/video.mp4" 
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="price">Price (for sale items only)</Label>
+                            <Input 
+                              id="price" 
+                              name="price" 
+                              type="number" 
+                              step="0.01"
+                              defaultValue={editingPost?.price || ''} 
+                              placeholder="0.00" 
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="currency">Currency</Label>
+                            <select 
+                              id="currency" 
+                              name="currency" 
+                              defaultValue={editingPost?.currency || 'USD'}
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              <option value="USD">USD</option>
+                              <option value="EUR">EUR</option>
+                              <option value="GBP">GBP</option>
+                              <option value="CAD">CAD</option>
+                            </select>
+                          </div>
                         </div>
                         <div>
                           <Label htmlFor="content">Content</Label>
@@ -431,9 +488,20 @@ const AdminDashboard = () => {
                               </Button>
                             </div>
                           </div>
+                          <div className="flex items-center gap-4 mb-3">
+                            <Badge variant={post.post_type === 'sale' ? 'default' : 'secondary'}>
+                              {post.post_type === 'sale' ? 'For Sale' : 'Portfolio'}
+                            </Badge>
+                            <Badge variant="outline">{post.category}</Badge>
+                            {post.post_type === 'sale' && post.price && (
+                              <Badge variant="outline" className="text-green-600">
+                                {post.currency} {post.price}
+                              </Badge>
+                            )}
+                          </div>
                           <div className="space-y-2 text-sm text-gray-600 mb-4">
-                            <p><strong>Category:</strong> {post.category}</p>
                             {post.image_url && <p><strong>Image:</strong> {post.image_url}</p>}
+                            {post.video_url && <p><strong>Video:</strong> {post.video_url}</p>}
                           </div>
                           <div>
                             <p className="font-medium">Content:</p>
