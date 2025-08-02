@@ -13,8 +13,10 @@ serve(async (req) => {
 
   try {
     const apiKey = Deno.env.get('NEWSDATA_API_KEY');
+    console.log('API Key check:', apiKey ? 'API key found' : 'API key missing');
     
     if (!apiKey) {
+      console.error('NewsData API key not configured');
       return new Response(
         JSON.stringify({ error: 'NewsData.io API key not configured' }),
         { 
@@ -36,17 +38,23 @@ serve(async (req) => {
     const queries = ['HVAC technology', 'solar energy systems', 'electrical installation', 'refrigeration innovation'];
     const randomQuery = queries[Math.floor(Math.random() * queries.length)];
     
-    const response = await fetch(
-      `https://newsdata.io/api/1/news?apikey=${apiKey}&q=${encodeURIComponent(randomQuery)}&language=en&size=12&category=technology`
-    );
+    const url = `https://newsdata.io/api/1/news?apikey=${apiKey}&q=${encodeURIComponent(randomQuery)}&language=en&size=12&category=technology`;
+    console.log('Making API request with query:', randomQuery);
+    
+    const response = await fetch(url);
+    console.log('NewsData API response status:', response.status);
     
     if (!response.ok) {
-      throw new Error(`NewsData.io API Error: ${response.status}`);
+      const errorText = await response.text();
+      console.error('NewsData API error response:', errorText);
+      throw new Error(`NewsData.io API Error: ${response.status} - ${errorText}`);
     }
     
     const data = await response.json();
+    console.log('NewsData API response data:', { status: data.status, resultCount: data.results?.length });
     
     if (data.status === 'error') {
+      console.error('NewsData API returned error:', data.message);
       throw new Error(data.message || 'Failed to fetch news');
     }
     
