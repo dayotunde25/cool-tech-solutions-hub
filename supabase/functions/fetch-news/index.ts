@@ -6,8 +6,11 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  console.log('fetch-news function called');
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('CORS preflight request');
     return new Response(null, { headers: corsHeaders });
   }
 
