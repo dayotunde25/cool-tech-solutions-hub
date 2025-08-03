@@ -62,6 +62,35 @@ const News = () => {
   const fetchNews = async () => {
     setLoading(true);
     try {
+      // First try to fetch from database directly
+      const { data: dbArticles, error: dbError } = await supabase
+        .from('news_articles')
+        .select('*')
+        .order('pub_date', { ascending: false })
+        .limit(6);
+      
+      if (!dbError && dbArticles && dbArticles.length > 0) {
+        setIsConfigured(true);
+        setArticles(dbArticles.map(article => ({
+          title: article.title,
+          description: article.description || '',
+          link: article.link,
+          pubDate: article.pub_date,
+          source_id: article.source_id || 'Unknown',
+          image_url: article.image_url
+        })));
+        
+        toast({
+          title: "News Loaded",
+          description: `Showing ${dbArticles.length} latest articles from database`
+        });
+        
+        // Try to fetch fresh news in background
+        supabase.functions.invoke('fetch-news').catch(console.error);
+        return;
+      }
+      
+      // If no articles in DB, try to fetch fresh news
       const { data, error } = await supabase.functions.invoke('fetch-news');
       
       if (error) {
@@ -83,7 +112,7 @@ const News = () => {
       
       toast({
         title: "News Updated",
-        description: `Found ${data.total || data.articles?.length || 0} relevant technical articles`
+        description: `Found ${data.total || data.articles?.length || 0} fresh articles`
       });
     } catch (error) {
       console.error('Error fetching news:', error);

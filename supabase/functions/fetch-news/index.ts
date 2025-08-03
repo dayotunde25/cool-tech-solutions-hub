@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.52.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -15,33 +16,51 @@ serve(async (req) => {
   }
 
   try {
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
     const apiKey = Deno.env.get('NEWSDATA_API_KEY');
     console.log('API Key check:', apiKey ? 'API key found' : 'API key missing');
     
     if (!apiKey) {
       console.error('NewsData API key not configured');
+      // Return existing news from database instead of error
+      const { data: existingNews, error } = await supabase
+        .from('news_articles')
+        .select('*')
+        .order('pub_date', { ascending: false })
+        .limit(6);
+      
+      if (error) {
+        console.error('Error fetching existing news:', error);
+        return new Response(
+          JSON.stringify({ error: 'No API key configured and unable to fetch cached news' }),
+          { 
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
+      
       return new Response(
-        JSON.stringify({ error: 'NewsData.io API key not configured' }),
+        JSON.stringify({ 
+          articles: existingNews || [],
+          total: existingNews?.length || 0,
+          cached: true
+        }),
         { 
-          status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       );
     }
 
-    // Technical keywords for filtering relevant news
-    const techKeywords = [
-      'HVAC', 'air conditioning', 'refrigeration', 'solar panels', 'electrical', 
-      'inverter', 'heat pump', 'cooling system', 'energy efficiency', 'smart home',
-      'renewable energy', 'electric vehicle charging', 'home automation', 'solar energy',
-      'electrical systems', 'refrigeration technology', 'climate control'
-    ];
-
-    // Search for technical news using relevant keywords
-    const queries = ['HVAC technology', 'solar energy systems', 'electrical installation', 'refrigeration innovation'];
+    // Broader search terms to ensure we get results
+    const queries = ['technology', 'energy', 'electrical', 'solar', 'innovation'];
     const randomQuery = queries[Math.floor(Math.random() * queries.length)];
     
-    const url = `https://newsdata.io/api/1/news?apikey=${apiKey}&q=${encodeURIComponent(randomQuery)}&language=en&size=10`;
+    const url = `https://newsdata.io/api/1/news?apikey=${apiKey}&q=${encodeURIComponent(randomQuery)}&language=en&size=20`;
     console.log('Making API request with query:', randomQuery);
     
     const response = await fetch(url);
@@ -61,17 +80,82 @@ serve(async (req) => {
       throw new Error(data.message || 'Failed to fetch news');
     }
     
-    // Filter articles for technical relevance
+    // Less strict filtering to ensure we get articles
     const filteredArticles = data.results.filter((article: any) => {
-      const content = `${article.title} ${article.description}`.toLowerCase();
-      return techKeywords.some(keyword => content.includes(keyword.toLowerCase())) &&
-             article.description && article.title;
+      return article.description && article.title && article.link;
     });
+    
+    console.log('Filtered articles count:', filteredArticles.length);
+    
+    if (filteredArticles.length > 0) {
+      // Save articles to database
+      const articlesToSave = filteredArticles.slice(0, 10).map((article: any) => ({
+        title: article.title,
+        description: article.description,
+        link: article.link,
+        pub_date: article.pubDate || new Date().toISOString(),
+        source_id: article.source_id || 'unknown',
+        image_url: article.image_url
+      }));
+      
+      // Insert new articles
+      const { error: insertError } = await supabase
+        .from('news_articles')
+        .insert(articlesToSave);
+      
+      if (insertError) {
+        console.error('Error saving articles:', insertError);
+      } else {
+        console.log('Successfully saved', articlesToSave.length, 'articles');
+      }
+      
+      // Keep only the latest 30 articles
+      const { data: allArticles, error: fetchError } = await supabase
+        .from('news_articles')
+        .select('id')
+        .order('pub_date', { ascending: false });
+      
+      if (!fetchError && allArticles && allArticles.length > 30) {
+        const articlesToDelete = allArticles.slice(30);
+        const idsToDelete = articlesToDelete.map(a => a.id);
+        
+        const { error: deleteError } = await supabase
+          .from('news_articles')
+          .delete()
+          .in('id', idsToDelete);
+        
+        if (deleteError) {
+          console.error('Error deleting old articles:', deleteError);
+        } else {
+          console.log('Deleted', idsToDelete.length, 'old articles');
+        }
+      }
+    }
+    
+    // Fetch latest articles from database to return
+    const { data: latestNews, error: fetchLatestError } = await supabase
+      .from('news_articles')
+      .select('*')
+      .order('pub_date', { ascending: false })
+      .limit(6);
+    
+    if (fetchLatestError) {
+      console.error('Error fetching latest news:', fetchLatestError);
+      return new Response(
+        JSON.stringify({ 
+          articles: filteredArticles.slice(0, 6),
+          total: filteredArticles.length 
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
     
     return new Response(
       JSON.stringify({ 
-        articles: filteredArticles.slice(0, 6),
-        total: filteredArticles.length 
+        articles: latestNews || [],
+        total: latestNews?.length || 0 
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
