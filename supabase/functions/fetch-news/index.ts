@@ -113,37 +113,38 @@ serve(async (req) => {
           source_id: article.source || 'unknown',
           image_url: article.image_url
         }));
-      
-      // Insert new articles
-      const { error: insertError } = await supabase
-        .from('news_articles')
-        .insert(articlesToSave);
-      
-      if (insertError) {
-        console.error('Error saving articles:', insertError);
-      } else {
-        console.log('Successfully saved', articlesToSave.length, 'articles');
-      }
-      
-      // Keep only the latest 30 articles
-      const { data: allArticles, error: fetchError } = await supabase
-        .from('news_articles')
-        .select('id')
-        .order('pub_date', { ascending: false });
-      
-      if (!fetchError && allArticles && allArticles.length > 30) {
-        const articlesToDelete = allArticles.slice(30);
-        const idsToDelete = articlesToDelete.map(a => a.id);
         
-        const { error: deleteError } = await supabase
+        // Insert new articles
+        const { error: insertError } = await supabase
           .from('news_articles')
-          .delete()
-          .in('id', idsToDelete);
+          .insert(articlesToSave);
         
-        if (deleteError) {
-          console.error('Error deleting old articles:', deleteError);
+        if (insertError) {
+          console.error('Error saving articles:', insertError);
         } else {
-          console.log('Deleted', idsToDelete.length, 'old articles');
+          console.log('Successfully saved', articlesToSave.length, 'articles');
+        }
+        
+        // Keep only the latest 30 articles
+        const { data: allArticles, error: fetchError } = await supabase
+          .from('news_articles')
+          .select('id')
+          .order('pub_date', { ascending: false });
+        
+        if (!fetchError && allArticles && allArticles.length > 30) {
+          const articlesToDelete = allArticles.slice(30);
+          const idsToDelete = articlesToDelete.map(a => a.id);
+          
+          const { error: deleteError } = await supabase
+            .from('news_articles')
+            .delete()
+            .in('id', idsToDelete);
+          
+          if (deleteError) {
+            console.error('Error deleting old articles:', deleteError);
+          } else {
+            console.log('Deleted', idsToDelete.length, 'old articles');
+          }
         }
       }
     }
