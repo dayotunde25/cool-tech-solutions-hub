@@ -21,11 +21,11 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const apiKey = Deno.env.get('NEWSDATA_API_KEY');
+    const apiKey = Deno.env.get('THENEWSAPI_API_KEY');
     console.log('API Key check:', apiKey ? 'API key found' : 'API key missing');
     
     if (!apiKey) {
-      console.error('NewsData API key not configured');
+      console.error('TheNewsAPI API key not configured');
       // Return existing news from database instead of error
       const { data: existingNews, error } = await supabase
         .from('news_articles')
@@ -60,43 +60,59 @@ serve(async (req) => {
     const queries = ['technology', 'energy', 'electrical', 'solar', 'innovation'];
     const randomQuery = queries[Math.floor(Math.random() * queries.length)];
     
-    const url = `https://newsdata.io/api/1/news?apikey=${apiKey}&q=${encodeURIComponent(randomQuery)}&language=en`;
+    const url = `https://api.thenewsapi.com/v1/news/all?api_token=${apiKey}&search=${encodeURIComponent(randomQuery)}&language=en&limit=20`;
     console.log('Making API request with query:', randomQuery);
     
     const response = await fetch(url);
-    console.log('NewsData API response status:', response.status);
+    console.log('TheNewsAPI response status:', response.status);
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('NewsData API error response:', errorText);
-      throw new Error(`NewsData.io API Error: ${response.status} - ${errorText}`);
+      console.error('TheNewsAPI error response:', errorText);
+      throw new Error(`TheNewsAPI Error: ${response.status} - ${errorText}`);
     }
     
     const data = await response.json();
-    console.log('NewsData API response data:', { status: data.status, resultCount: data.results?.length });
+    console.log('TheNewsAPI response data:', { resultCount: data.data?.length });
     
-    if (data.status === 'error') {
-      console.error('NewsData API returned error:', data.message);
-      throw new Error(data.message || 'Failed to fetch news');
+    if (!data.data) {
+      console.error('TheNewsAPI returned no data');
+      throw new Error('No data returned from TheNewsAPI');
     }
     
-    // Less strict filtering to ensure we get articles
-    const filteredArticles = data.results.filter((article: any) => {
-      return article.description && article.title && article.link;
+    // Filter articles to ensure we have required fields
+    const filteredArticles = data.data.filter((article: any) => {
+      return article.description && article.title && article.url;
     });
     
     console.log('Filtered articles count:', filteredArticles.length);
     
     if (filteredArticles.length > 0) {
-      // Save articles to database
-      const articlesToSave = filteredArticles.slice(0, 10).map((article: any) => ({
-        title: article.title,
-        description: article.description,
-        link: article.link,
-        pub_date: article.pubDate || new Date().toISOString(),
-        source_id: article.source_id || 'unknown',
-        image_url: article.image_url
-      }));
+      // Check for existing articles to prevent duplicates
+      const existingLinks = await supabase
+        .from('news_articles')
+        .select('link')
+        .in('link', filteredArticles.map((article: any) => article.url));
+      
+      const existingLinksSet = new Set(existingLinks.data?.map(item => item.link) || []);
+      
+      // Filter out duplicates
+      const newArticles = filteredArticles.filter((article: any) => 
+        !existingLinksSet.has(article.url)
+      );
+      
+      console.log('New articles to save (after duplicate check):', newArticles.length);
+      
+      if (newArticles.length > 0) {
+        // Save articles to database
+        const articlesToSave = newArticles.slice(0, 10).map((article: any) => ({
+          title: article.title,
+          description: article.description,
+          link: article.url,
+          pub_date: article.published_at || new Date().toISOString(),
+          source_id: article.source || 'unknown',
+          image_url: article.image_url
+        }));
       
       // Insert new articles
       const { error: insertError } = await supabase
