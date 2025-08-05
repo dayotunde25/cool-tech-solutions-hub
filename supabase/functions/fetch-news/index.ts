@@ -21,11 +21,15 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const apiKey = Deno.env.get('THENEWSAPI_API_KEY');
-    console.log('API Key check:', apiKey ? 'API key found' : 'API key missing');
+    const theNewsApiKey = Deno.env.get('THENEWSAPI_API_KEY');
+    const newsDataApiKey = Deno.env.get('NEWSDATA_API_KEY');
+    console.log('API Keys check:', { 
+      theNewsApi: theNewsApiKey ? 'found' : 'missing',
+      newsData: newsDataApiKey ? 'found' : 'missing'
+    });
     
-    if (!apiKey) {
-      console.error('TheNewsAPI API key not configured');
+    if (!theNewsApiKey && !newsDataApiKey) {
+      console.error('No API keys configured');
       // Return existing news from database instead of error
       const { data: existingNews, error } = await supabase
         .from('news_articles')
@@ -36,7 +40,7 @@ serve(async (req) => {
       if (error) {
         console.error('Error fetching existing news:', error);
         return new Response(
-          JSON.stringify({ error: 'No API key configured and unable to fetch cached news' }),
+          JSON.stringify({ error: 'No API keys configured and unable to fetch cached news' }),
           { 
             status: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -60,59 +64,112 @@ serve(async (req) => {
     const queries = ['technology', 'energy', 'electrical', 'solar', 'innovation'];
     const randomQuery = queries[Math.floor(Math.random() * queries.length)];
     
-    const url = `https://api.thenewsapi.com/v1/news/all?api_token=${apiKey}&search=${encodeURIComponent(randomQuery)}&language=en&limit=20`;
-    console.log('Making API request with query:', randomQuery);
+    let filteredArticles: any[] = [];
+    let apiUsed = '';
     
-    const response = await fetch(url);
-    console.log('TheNewsAPI response status:', response.status);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('TheNewsAPI error response:', errorText);
-      throw new Error(`TheNewsAPI Error: ${response.status} - ${errorText}`);
+    // Try TheNewsAPI first
+    if (theNewsApiKey) {
+      try {
+        const url = `https://api.thenewsapi.com/v1/news/all?api_token=${theNewsApiKey}&search=${encodeURIComponent(randomQuery)}&language=en&limit=20`;
+        console.log('Trying TheNewsAPI with query:', randomQuery);
+        
+        const response = await fetch(url);
+        console.log('TheNewsAPI response status:', response.status);
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('TheNewsAPI response data:', { resultCount: data.data?.length });
+          
+          if (data.data) {
+            filteredArticles = data.data.filter((article: any) => {
+              return article.description && article.title && article.url;
+            });
+            apiUsed = 'TheNewsAPI';
+            console.log('TheNewsAPI success, filtered articles:', filteredArticles.length);
+          }
+        } else {
+          console.log('TheNewsAPI failed with status:', response.status);
+        }
+      } catch (error) {
+        console.log('TheNewsAPI error:', error);
+      }
     }
     
-    const data = await response.json();
-    console.log('TheNewsAPI response data:', { resultCount: data.data?.length });
-    
-    if (!data.data) {
-      console.error('TheNewsAPI returned no data');
-      throw new Error('No data returned from TheNewsAPI');
+    // Fallback to NewsData API if TheNewsAPI failed or no results
+    if (filteredArticles.length === 0 && newsDataApiKey) {
+      try {
+        const url = `https://newsdata.io/api/1/news?apikey=${newsDataApiKey}&q=${encodeURIComponent(randomQuery)}&language=en`;
+        console.log('Trying NewsData API with query:', randomQuery);
+        
+        const response = await fetch(url);
+        console.log('NewsData API response status:', response.status);
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('NewsData API response data:', { status: data.status, resultCount: data.results?.length });
+          
+          if (data.status === 'success' && data.results) {
+            filteredArticles = data.results.filter((article: any) => {
+              return article.description && article.title && article.link;
+            });
+            apiUsed = 'NewsData';
+            console.log('NewsData API success, filtered articles:', filteredArticles.length);
+          }
+        } else {
+          console.log('NewsData API failed with status:', response.status);
+        }
+      } catch (error) {
+        console.log('NewsData API error:', error);
+      }
     }
     
-    // Filter articles to ensure we have required fields
-    const filteredArticles = data.data.filter((article: any) => {
-      return article.description && article.title && article.url;
-    });
-    
-    console.log('Filtered articles count:', filteredArticles.length);
+    console.log('Final filtered articles count:', filteredArticles.length, 'from', apiUsed);
     
     if (filteredArticles.length > 0) {
       // Check for existing articles to prevent duplicates
+      const articleLinks = filteredArticles.map((article: any) => 
+        apiUsed === 'TheNewsAPI' ? article.url : article.link
+      );
+      
       const existingLinks = await supabase
         .from('news_articles')
         .select('link')
-        .in('link', filteredArticles.map((article: any) => article.url));
+        .in('link', articleLinks);
       
       const existingLinksSet = new Set(existingLinks.data?.map(item => item.link) || []);
       
       // Filter out duplicates
-      const newArticles = filteredArticles.filter((article: any) => 
-        !existingLinksSet.has(article.url)
-      );
+      const newArticles = filteredArticles.filter((article: any) => {
+        const articleLink = apiUsed === 'TheNewsAPI' ? article.url : article.link;
+        return !existingLinksSet.has(articleLink);
+      });
       
       console.log('New articles to save (after duplicate check):', newArticles.length);
       
       if (newArticles.length > 0) {
-        // Save articles to database
-        const articlesToSave = newArticles.slice(0, 10).map((article: any) => ({
-          title: article.title,
-          description: article.description,
-          link: article.url,
-          pub_date: article.published_at || new Date().toISOString(),
-          source_id: article.source || 'unknown',
-          image_url: article.image_url
-        }));
+        // Save articles to database with proper field mapping
+        const articlesToSave = newArticles.slice(0, 10).map((article: any) => {
+          if (apiUsed === 'TheNewsAPI') {
+            return {
+              title: article.title,
+              description: article.description,
+              link: article.url,
+              pub_date: article.published_at || new Date().toISOString(),
+              source_id: article.source || 'unknown',
+              image_url: article.image_url
+            };
+          } else {
+            // NewsData API format
+            return {
+              title: article.title,
+              description: article.description,
+              link: article.link,
+              pub_date: article.pubDate || new Date().toISOString(),
+              source_id: article.source_id || 'unknown',
+              image_url: article.image_url
+            };
+          }
+        });
         
         // Insert new articles
         const { error: insertError } = await supabase
