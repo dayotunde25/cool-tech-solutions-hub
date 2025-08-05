@@ -60,7 +60,7 @@ serve(async (req) => {
     const queries = ['technology', 'energy', 'electrical', 'solar', 'innovation'];
     const randomQuery = queries[Math.floor(Math.random() * queries.length)];
     
-    const url = `https://newsdata.io/api/1/news?apikey=${apiKey}&q=${encodeURIComponent(randomQuery)}&language=en&size=20`;
+    const url = `https://newsdata.io/api/1/news?apikey=${apiKey}&q=${encodeURIComponent(randomQuery)}&language=en`;
     console.log('Making API request with query:', randomQuery);
     
     const response = await fetch(url);
