@@ -406,6 +406,7 @@ const AdminDashboard = () => {
                               defaultValue={editingPost?.currency || 'USD'}
                               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                             >
+                              <option value="NGN">USD</option>
                               <option value="USD">USD</option>
                               <option value="EUR">EUR</option>
                               <option value="GBP">GBP</option>
@@ -628,6 +629,18 @@ const AdminDashboard = () => {
                             </Badge>
                           )}
                         </div>
+                        <div className="flex gap-2">
+            <Button 
+              onClick={() => fetchNews()} 
+              disabled={loading}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              {loading ? 'Updating...' : 'Refresh'}
+            </Button>
+          </div>
                       </div>
                       <div className="flex gap-2">
                         <Button 
