@@ -164,27 +164,14 @@ const News = () => {
           <div className="flex items-center gap-4">
             {isConfigured ? (
               <Badge variant="outline" className="text-green-600 border-green-600">
-                ✓ Live News Active • Auto-refreshes every 30 min
+                ✓ Live News
               </Badge>
             ) : (
               <Badge variant="outline" className="text-orange-600 border-orange-600 flex items-center gap-2">
                 <AlertCircle className="w-4 h-4" />
-                Demo Mode • Contact admin for live news
+                News
               </Badge>
             )}
-          </div>
-          
-          <div className="flex gap-2">
-            <Button 
-              onClick={() => fetchNews()} 
-              disabled={loading}
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              {loading ? 'Updating...' : 'Refresh'}
-            </Button>
           </div>
         </div>
 
